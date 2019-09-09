@@ -66,6 +66,7 @@ import javax.swing.JToolBar;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+import org.openmicroscopy.shoola.env.data.login.UserCredentials;
 import org.openmicroscopy.shoola.util.CommonsLangUtils;
 
 import org.openmicroscopy.shoola.util.StringComparator;
@@ -188,29 +189,12 @@ public class ScreenLogin
 	/** The selected connection speed. */
 	private int					speedIndex;
 	
-	/** The port value. */
-	private int					selectedPort;
-	
 	/** Indicates to show or hide the connection speed option. */
 	private boolean				connectionSpeed;
 	
 	/** The default foreground color. */
 	private Color				defaultForeground;
-	
-	/** The groups the user is a member of. */
-	private JComboBox			groupsBox;
-	
-	//private JButton				groupsBox;
-	
-	/** The component displaying the login text. */
-	private JTextPane 			pleaseLogIn;
-	
-	/** The groups the user is member of. */
-	private Map<Long, String>	groups;
-	
-	/** The name read from the system property if previously set. */
-	private String				originalName;
-	
+
 	/** The name read from the system property if previously set. */
 	private String				originalServerName;
 	
@@ -219,9 +203,6 @@ public class ScreenLogin
 	
 	/** The component displaying the controls. */
 	private JPanel 				mainPanel;
-
-	/** The possible groups. */
-	private String[]			groupValues;
 
 	/** 
 	 * Button indicating that the transfer of data is secured or not
@@ -249,9 +230,6 @@ public class ScreenLogin
 	
 	/** The listener to encrypt the data transfer.*/
 	private ActionListener encryptionListener;
-	
-    /** Flag indicating to modify the host.*/
-    private boolean hostConfigurable;
     
     /** The default server name from the configuration file.*/
     private String configureServerName;
@@ -291,19 +269,8 @@ public class ScreenLogin
 		if (usr != null) usr = usr.trim();
 		if (s != null) s = s.trim();
 		setControlsEnabled(false);
-		LoginCredentials lc;
-		if (groupsBox == null) {
-			lc = new LoginCredentials(usr, psw, s, speedIndex, 
-					selectedPort, encrypted);
-		} else {
-			long id = -1L;
-			if (hasGroupOption() && groupsBox.isVisible()) 
-				//id = getGroupId(groupsBox.getText());
-				id = getGroupId(groupNames.get(groupsBox.getSelectedIndex()));
-			
-			lc = new LoginCredentials(usr, psw, s, speedIndex, 
-					selectedPort, id, encrypted);
-		}
+		UserCredentials lc= new UserCredentials(usr, psw, s, speedIndex);
+		lc.setEncrypted(encrypted);
 		setUserName(usr);
 		setEncrypted();
 		setControlsEnabled(false);
@@ -312,37 +279,6 @@ public class ScreenLogin
 		firePropertyChange(LOGIN_PROPERTY, null, lc);
 	}
 
-	/**
-	 * Returns the identifier of the group corresponding to the passed value.
-	 * 
-	 * @param value The name of the
-	 * @return
-	 */
-	private Long getGroupId(String value)
-	{
-		Entry<Long, String> entry;
-		Iterator<Entry<Long, String>> i = groups.entrySet().iterator();
-		while (i.hasNext()) {
-			entry = i.next();
-			if (entry.getValue().equals(value))
-				return entry.getKey();
-		}
-		return -1L;
-	}
-	
-	/** 
-	 * Returns <code>true</code> if the group option can be displayed if
-	 * available, <code>false</code> otherwise.
-	 * 
-	 * @return See above.
-	 */
-	private boolean hasGroupOption()
-	{
-		String usr = user.getText().trim();
-		String s = serverText.getText().trim();
-		return (usr.equals(originalName) && s.equals(originalServerName));
-	}
-	
 	/** 
 	 * Brings up the server dialog to select an existing server or enter
 	 * a new server address.
@@ -457,58 +393,12 @@ public class ScreenLogin
 		button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 	}
 	
-	/** Initializes the groups.*/
-	private void initializeGroups()
-	{
-		groups = getGroups();
-		if (groups != null && groups.size() > 1) {
-			groupNames = new HashMap<Integer, String>();
-			groupValues = new String[groups.size()];
-			Entry<Long, String> entry;
-			Iterator<Entry<Long, String>> i = groups.entrySet().iterator();
-			int index = 0;
-			while (i.hasNext()) {
-				entry = i.next();
-				groupValues[index] =  entry.getValue();
-				index++;
-			}
-			String selectedGroup = groupValues[groupValues.length-1];
-			
-			//Review the groups
-			Arrays.sort(groupValues, new StringComparator());
-			String[] sorted = new String[groupValues.length];
-			String v;
-			String value;
-			for (int j = 0; j < groupValues.length; j++) {
-				v = groupValues[j];
-				value = v;
-				if (v.length() > MAX_CHAR) {
-					value = v.substring(0, MAX_CHAR)+"...";
-				}
-				groupNames.put(j, v);
-				sorted[j] = value;
-				if (selectedGroup.equals(v)) {
-					selectedGroup = value;
-				}
-			}
-			
-			
-			
-			groupsBox = new JComboBox(sorted);
-			groupsBox.setSelectedItem(selectedGroup);
-		} else {
-			if (groupNames != null) groupNames.clear();
-			groupsBox = null;
-		}
-	}
-	
 	/** 
 	 * Creates and initializes the components
 	 * 
 	 * @param userName The name of the user.
-	 * @param hostName The default hostName.
 	 */
-	private void initialize(String userName, String hostName)
+	private void initialize(String userName)
 	{
 	    helpButton = new JButton(IconManager.getInstance().getIcon(IconManager.HELP));
 	    helpButton.setBorder(null);
@@ -522,8 +412,7 @@ public class ScreenLogin
 		progressBar.setVisible(false);
 		progressBar.setStringPainted(false);
 		progressBar.setFont(newFont);
-		
-		originalName = userName;
+
 		user = new JTextField();
 		user.setName("username field");
 		user.setText(userName);
@@ -533,56 +422,12 @@ public class ScreenLogin
 		pass.setName("password field");
 		pass.setToolTipText("Enter your password.");
 		pass.setColumns(TEXT_COLUMN);
-		Map<String, String> servers = editor.getServers();
-		if (CommonsLangUtils.isNotBlank(hostName)) {
-			serverName = hostName;
-			//if user did point to another server
-			if (servers != null && servers.size() > 0) {
-				int n = servers.size()-1;
-				Iterator<String> i = servers.keySet().iterator();
-				int k = 0;
-				String value;
-				while (i.hasNext()) {
-					serverName = i.next();
-					if (k == n) {
-						value = servers.get(serverName);
-						if (value != null) {
-							try {
-								selectedPort = Integer.parseInt(value);
-							} catch (Exception e) {}
-						}
-					}
-					k++;
-				}
-			} else {
-				editor.removeLastRow();
-				editor.addRow(hostName);
-			}
-		} else {
-			if (servers == null || servers.size() == 0) 
-				serverName = hostName;
-			else {
-				int n = servers.size()-1;
-				Iterator<String> i = servers.keySet().iterator();
-				int k = 0;
-				String value;
-				while (i.hasNext()) {
-					serverName = i.next();
-					if (k == n) {
-						value = servers.get(serverName);
-						if (value != null) {
-							try {
-								selectedPort = Integer.parseInt(value);
-							} catch (Exception e) {}
-						}
-					}
-					k++;
-				}
-			}
-		}
-		if (serverName.length() == 0) serverName = DEFAULT_SERVER;
-		if (!DEFAULT_SERVER.equals(serverName))
-			originalServerName = serverName;
+		List<String> servers = editor.getServers();
+		if (!servers.isEmpty())
+			serverName = servers.get(servers.size()-1);
+		else
+			serverName = DEFAULT_SERVER;
+		originalServerName = serverName;
 		connectionSpeedText = new JLabel(getConnectionSpeed());
 		connectionSpeedText.setForeground(TEXT_COLOR);
 		connectionSpeedText.setBorder(
@@ -593,8 +438,7 @@ public class ScreenLogin
 		serverTextPane = UIUtilities.buildComponentPanelRight(serverText, 
 				false);
 		serverTextPane.setBorder(BorderFactory.createEmptyBorder(5, 0, 0, 0));
-		
-		initializeGroups();
+
 		ref = new ArrayList<JComponent>();
 		login = new JButton("Login");
 		login.setName("login button");
@@ -644,19 +488,13 @@ public class ScreenLogin
 
 	/** 
 	 * Layouts the groups or login options.
-	 * 
-	 * @param group Pass <code>true</code> to display the groups options if 
-	 * 				available, <code>false</code> otherwise.
 	 */
-	private void layout(boolean group)
+	private void layoutMainPanel()
 	{
 		if (mainPanel == null) return;
 		if (ref == null) return;
 		Iterator<JComponent> i = ref.iterator();
 		boolean visible = false;
-		if (group) {
-			if (groups != null && groupsBox != null) visible = true;
-		}
 		while (i.hasNext()) {
 			i.next().setVisible(visible);
 		}
@@ -821,9 +659,9 @@ public class ScreenLogin
 	private String getConnectionSpeed()
 	{
 		switch (speedIndex) {
-			case LoginCredentials.HIGH: return " [High]";
-			case LoginCredentials.MEDIUM: return " [Medium]";
-			case LoginCredentials.LOW: return " [Low]";
+			case UserCredentials.HIGH: return " [High]";
+			case UserCredentials.MEDIUM: return " [Medium]";
+			case UserCredentials.LOW: return " [Low]";
 		}
 		return null;
 	}
@@ -840,18 +678,10 @@ public class ScreenLogin
 				s = configureServerName;
 			else s = DEFAULT_SERVER;
 		}
-		String[] values = s.split(ServerEditor.SERVER_PORT_SEPARATOR, 0);
-		s = values[0];
-		if (values.length == 2) {
-			try {
-				selectedPort = Integer.parseInt(values[1]);
-			} catch (Exception e) {}
-		}
 		serverText.setText(s);
 		serverTextPane.validate();
 		serverTextPane.repaint();
-		initializeGroups();
-		layout(groupsBox != null);
+		layoutMainPanel();
 		enableControls();
 	}
 
@@ -887,7 +717,7 @@ public class ScreenLogin
 		} else {
 			login.setForeground(FOREGROUND_COLOR);
 		}
-		layout(hasGroupOption());
+		layoutMainPanel();
 	}
 	
 	/**
@@ -912,7 +742,7 @@ public class ScreenLogin
 		Preferences prefs = Preferences.userNodeForPackage(ScreenLogin.class);
 		String s = prefs.get(OMERO_CONNECTION_SPEED, null);
 		if (s == null || s.trim().length() == 0)
-			return LoginCredentials.HIGH;
+			return UserCredentials.HIGH;
 		return Integer.parseInt(s);
 	}
 	
@@ -964,60 +794,6 @@ public class ScreenLogin
 		prefs.put(OMERO_TRANSFER_ENCRYPTED, value);
 	}
 	
-	/**
-	 * Returns the possible groups.
-	 * 
-	 * @return See above.
-	 */
-	private Map<Long, String> getGroups()
-	{
-		Map<Long, String> groups = new LinkedHashMap<Long, String>();
-		Preferences prefs = Preferences.userNodeForPackage(ScreenLogin.class);
-		String list = prefs.get(OMERO_USER_GROUP, null);
-		if (list == null || list.length() == 0)  return groups;
-		String[] l = list.split(ServerEditor.SERVER_NAME_SEPARATOR, 0);
-        
-        if (l == null) return groups;
-        int index;
-        String group;
-        String name;
-        long id;
-        String[] values;
-        String userName;
-        String serverName;
-        String selectedName = user.getText();
-        String selectedServer = serverText.getText();
-        for (index = 0; index < l.length; index++) {
-        	group = l[index].trim();
-        	if (group.length() > 0) {
-        		values = group.split(ServerEditor.SERVER_PORT_SEPARATOR, 0);
-        		if (values.length == 2) {
-        			name = values[1];
-        			try {
-						id = Long.parseLong(values[0]);
-						groups.put(id, name);
-					} catch (Exception e) {
-						//ignore: not possible to read the group
-					}
-        		} else if (values.length == 4) {
-        			userName = values[0];
-        			serverName = values[1];
-        			name = values[3];
-        			if (userName.equals(selectedName) &&
-        					serverName.equals(selectedServer)) {
-        				try {
-    						id = Long.parseLong(values[2]);
-    						groups.put(id, name);
-    					} catch (Exception e) {
-    						//ignore: not possible to read the group
-    					}
-        			}
-        		}
-        	}
-        }	
-		return groups;
-	}
-	
 	/** 
 	 * Sets the default for the window. 
 	 * 
@@ -1042,27 +818,24 @@ public class ScreenLogin
 	 * @param logo The frame's background logo. Mustn't be <code>null</code>.
 	 * @param frameIcon The image icon for the window.
 	 * @param version The version of the software.
-	 * @param defaultPort The default port.
-	 * @param hostName The default host name.
 	 * @param serverAvailable Pass <code>true</code> if the client needs to 
 	 * connect to a server, <code>false</code> otherwise.
 	 */
 	public ScreenLogin(String title, Icon logo, Image frameIcon, String version,
-			String defaultPort, String hostName, boolean serverAvailable)
+			boolean serverAvailable)
 	{
 		super(title);
 		setName("login window");
-		selectedPort = -1;
 		Dimension d;
 		if (logo != null)
 			d = new Dimension(logo.getIconWidth(), logo.getIconHeight());
 		else d = DEFAULT_SIZE;
 		setSize(d);
 		setPreferredSize(d);
-		editor = new ServerEditor(defaultPort);
+		editor = new ServerEditor();
 		editor.addPropertyChangeListener(ServerEditor.REMOVE_PROPERTY, this);
 		speedIndex = retrieveConnectionSpeed();
-		initialize(getUserName(), hostName);
+		initialize(getUserName());
 		initListeners();
 		buildGUI(logo, version, serverAvailable);
 		encrypt();
@@ -1091,12 +864,10 @@ public class ScreenLogin
 	 * 					 Mustn't be <code>null</code>.
 	 * @param frameIcon  The image icon for the window.
 	 * @param version	 The version of the software.
-	 * @param defaultPort The default port.
 	 */
-	public ScreenLogin(String title, Icon logo, Image frameIcon, String version,
-			String defaultPort)
+	public ScreenLogin(String title, Icon logo, Image frameIcon, String version)
 	{
-		this(title, logo, frameIcon, version, defaultPort, null, true);
+		this(title, logo, frameIcon, version, true);
 	}
 
 	/**
@@ -1109,7 +880,7 @@ public class ScreenLogin
 	 */
 	public ScreenLogin(String title, Icon logo, Image frameIcon)
 	{
-		this(title, logo, frameIcon, null, null);
+		this(title, logo, frameIcon, null);
 	}
 
 	/**
@@ -1122,7 +893,7 @@ public class ScreenLogin
 	 */
 	public ScreenLogin(Icon logo, Image frameIcon, String version)
 	{
-		this(null, logo, frameIcon, version, null);
+		this(null, logo, frameIcon, version);
 	}
 
 	/**
@@ -1134,7 +905,7 @@ public class ScreenLogin
 	 */
 	public ScreenLogin(Icon logo, Image frameIcon)
 	{
-		this(null, logo, frameIcon, null, null);
+		this(null, logo, frameIcon, null);
 	}
 	
 	/** 
@@ -1166,7 +937,6 @@ public class ScreenLogin
 		//login.requestFocus();
 		configButton.setEnabled(b);
 		encryptedButton.setEnabled(b);
-		if (groupsBox != null) groupsBox.setEnabled(b);
 		if (b) {
 			setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 			setButtonDefault(login);
@@ -1351,20 +1121,17 @@ public class ScreenLogin
      * @param hostName The hostname.
      * @param configurable Pass <code>true</code> to allow to change the 
      * host name, <code>false</code> otherwise.
-     * @param port The selected port.
      */
-    public void setHostNameConfiguration(String hostName, boolean configurable,
-            int port)
+    public void setHostNameConfiguration(String hostName, boolean configurable)
     {
-        hostConfigurable = configurable;
         configureServerName = hostName;
         if (CommonsLangUtils.isNotBlank(hostName)) {
             if (configurable) {
-                Map<String, String> servers = editor.getServers();
+                List<String> servers = editor.getServers();
                 if (servers == null || servers.size() == 0) 
                     editor.addRow(hostName);
                 else {
-                    Iterator<String> i = servers.keySet().iterator();
+                    Iterator<String> i = servers.iterator();
                     String value;
                     boolean exist = false;
                     while (i.hasNext()) {
@@ -1379,26 +1146,9 @@ public class ScreenLogin
             } else {
                 serverName = hostName;
                 originalServerName = serverName;
-                if (port < 0) {
-                    selectedPort = Integer.parseInt(editor.getDefaultPort());
-                } else {
-                    selectedPort = port;
-                }
                 setNewServer(originalServerName);
             }
         }
-    }
-
-    /**
-     * Indicates if the user can modify or not the host name from the UI.
-     * 
-     * @param hostName The hostname.
-     * @param configurable Pass <code>true</code> to allow to change the 
-     * host name, <code>false</code> otherwise.
-     */
-    public void setHostNameConfiguration(String hostName, boolean configurable)
-    {
-        setHostNameConfiguration(hostName, configurable, -1);
     }
 
 	/**
