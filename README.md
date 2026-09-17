@@ -12,8 +12,8 @@ Technical documentation can be found [here](https://omero-insight.readthedocs.io
 
 ## Directory Contents
 
-This directory is the repository of the software artifacts of the
-OMERO.insight Project. Its contents are as follows:
+This directory is the repository of the software artifacts of
+OMERO.insight. Its contents are as follows:
 
   + build.gradle, settings.gradle: build for build system
   + src: Contains the application source files, various configuration
@@ -89,4 +89,4 @@ for further details.
 
 ##  Copyright
 
-Copyright (C) 2006-2024 University of Dundee. All rights reserved.
+Copyright (C) 2006-2026 University of Dundee. All rights reserved.
