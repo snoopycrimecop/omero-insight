@@ -110,6 +110,20 @@ runtime {
       '--no-header-files',
       '--no-man-pages'
   ]
+  modules = [
+      'java.sql',
+      'java.desktop',
+      'java.prefs',
+      'java.management',
+      'java.xml',
+      'java.datatransfer',
+      'java.logging',
+      'jdk.jsobject',
+      'java.rmi',
+      'java.scripting',
+      'java.security.jgss',
+      'java.naming'
+  ]
   jpackage {
       def currentOs = org.gradle.internal.os.OperatingSystem.current()
       def imgType = currentOs.windows ? 'ico' : currentOs.macOsX ? 'icns' : 'png'
