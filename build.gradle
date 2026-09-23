@@ -122,7 +122,13 @@ runtime {
       'java.rmi',
       'java.scripting',
       'java.security.jgss',
-      'java.naming'
+      'java.naming',
+      // java.crypto.ec has been deprecated and merged into java.base
+      // in later versions of Java - see JDK-8312267
+      // This can be re-evaluated when the application is packaged with
+      // Java 25 LTS
+      'jdk.crypto.ec',
+      'jdk.crypto.cryptoki'
   ]
   jpackage {
       def currentOs = org.gradle.internal.os.OperatingSystem.current()
