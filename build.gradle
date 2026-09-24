@@ -86,7 +86,14 @@ tasks.register('ijJar', Jar) {
     archiveBaseName = 'omero_ij'
     archiveClassifier.set('all')
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    from {
+        configurations.runtimeClasspath.collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+    from ('src/dist/config/') {
+        include '*.xml'
+    }
     with jar
 }
 
