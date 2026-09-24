@@ -78,6 +78,10 @@ jar {
 }
 
 tasks.register('ijJar', Jar) {
+    // Do not include digital signature files in fat JAR
+    exclude("META-INF/*.RSA")
+    exclude("META-INF/*.SF")
+    exclude("META-INF/*.DSA")
     manifest.from jar.manifest
     archiveBaseName = 'omero_ij'
     archiveClassifier.set('all')
