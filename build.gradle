@@ -54,7 +54,7 @@ dependencies {
     implementation("org.swinglabs:swingx:1.6.1")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.22.4")
 
-    implementation("org.openmicroscopy:omero-gateway:5.11.0")
+    implementation("org.openmicroscopy:omero-gateway:5.11.1-SNAPSHOT")
     implementation("ch.qos.logback:logback-classic:1.5.37")
 }
 
